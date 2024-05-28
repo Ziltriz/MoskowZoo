@@ -6,6 +6,7 @@ bot = telebot.TeleBot(TOKEN)
 
 @bot.message_handler(commands=['start'])
 def process_start_command(message: telebot.types.Message):
+    bot.set_state(message.chat.id , state='start')
     text = (f' Привет, {message.from_user.first_name}! \n '
             ' Я манул Тимофей из Московского зоопарка.\n'
             ' Я очень люблю играть в викторины и предлагаю тебе тоже попробовать! \n '
@@ -19,20 +20,46 @@ def process_start_command(message: telebot.types.Message):
 def help(message: telebot.types.Message):
     pass
 
-@bot.message_handler(['play'])
-def play(message: telebot.types.Message):
+@bot.message_handler(commands=['play'])
+def play(message):
     text = 'Отлично давай по играем! \n'
     bot.send_message(message.from_user.id, text)
-    zq = ZooQuiz()
-    for i in zq.questions:
-        markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
-        btn1 = telebot.types.KeyboardButton(i['answers'][0])
-        btn2 = telebot.types.KeyboardButton(i['answers'][1])
-        btn3 = telebot.types.KeyboardButton(i['answers'][2])
-        btn4 = telebot.types.KeyboardButton(i['answers'][3])
-        markup.add(btn1, btn2, btn3, btn4)
-        bot.send_message(message.from_user.id, i['questions'], reply_markup=markup)
+    user_state = bot.get_state(user_id=message.chat.id)
+    if user_state == 'start':
+        text = ' И так первый вопрос:'
+        bot.send_message(message.from_user.id, text)
+        bot.set_state(user_id=message.chat.id, state='question')
+        display_question(message)
+    elif user_state == 'question':
+        display_question(message)
+
+@bot.message_handler(content_types='text')
+def display_question(message):
+    if len(ZooQuiz.questions) != 0 and len(ZooQuiz.questions) > 0:
+        question = ZooQuiz.questions[0]
+        markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+        answers_keys = list(question['answers'].keys())
+        for j in answers_keys:
+            btn = telebot.types.KeyboardButton(j)
+            markup.add(btn)
+        markup.add(telebot.types.KeyboardButton('Назад'))
+        bot.send_message(message.from_user.id, question['questions'], reply_markup=markup)
+        bot.set_state(user_id=message.chat.id, state='answer')
+        check_answer(message)
+    else:
+        result(message)
 
 
+def check_answer(message):
+    question = ZooQuiz.questions[0]
+    answer = message.text
+    print(ZooQuiz.points, question['answers'].get(answer), answer)
+    for i in list(question['answers'].keys()):
+        if answer == i:
+            ZooQuiz.points += question['answers'].get(answer)
+            ZooQuiz.questions.pop(0)
+
+def result(message):
+    pass
 
 bot.polling()
