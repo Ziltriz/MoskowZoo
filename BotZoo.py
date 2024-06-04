@@ -22,19 +22,17 @@ def help(message: telebot.types.Message):
 
 @bot.message_handler(commands=['play'])
 def play(message):
-    text = 'Отлично давай по играем! \n'
-    bot.send_message(message.from_user.id, text)
-    user_state = bot.get_state(user_id=message.chat.id)
-    if user_state == 'start':
+    text = ('Отлично давай по играем! \n'
+            'Жми на кнопку начнем для начала!')
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.add(telebot.types.KeyboardButton('Начнем!'))
+    msg = bot.send_message(message.from_user.id, text=text, reply_markup=markup)
+    bot.register_next_step_handler(msg, display_question)
+def display_question(message):
+    points = ZooQuiz.points
+    if message.text == 'Начнем!':
         text = ' И так первый вопрос:'
         bot.send_message(message.from_user.id, text)
-        bot.set_state(user_id=message.chat.id, state='question')
-        display_question(message)
-    elif user_state == 'question':
-        display_question(message)
-
-@bot.message_handler(content_types='text')
-def display_question(message):
     if len(ZooQuiz.questions) != 0 and len(ZooQuiz.questions) > 0:
         question = ZooQuiz.questions[0]
         markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
@@ -43,23 +41,27 @@ def display_question(message):
             btn = telebot.types.KeyboardButton(j)
             markup.add(btn)
         markup.add(telebot.types.KeyboardButton('Назад'))
-        bot.send_message(message.from_user.id, question['questions'], reply_markup=markup)
-        bot.set_state(user_id=message.chat.id, state='answer')
-        check_answer(message)
+        msg = bot.send_message(message.from_user.id, question['questions'], reply_markup=markup)
+        bot.register_next_step_handler(msg, check_answer)
     else:
-        result(message)
+        result(message, points)
 
 
 def check_answer(message):
     question = ZooQuiz.questions[0]
     answer = message.text
-    print(ZooQuiz.points, question['answers'].get(answer), answer)
-    for i in list(question['answers'].keys()):
-        if answer == i:
-            ZooQuiz.points += question['answers'].get(answer)
-            ZooQuiz.questions.pop(0)
+    if len(ZooQuiz.questions) != 0:
+        for i in list(question['answers'].keys()):
+            print(message.text, i)
+            if answer == i:
+                ZooQuiz.points += question['answers'].get(answer)
+                ZooQuiz.questions.pop(0)
+                display_question(message)
+                break
 
-def result(message):
-    pass
+
+def result(message, points):
+    print(points)
+
 
 bot.polling()
