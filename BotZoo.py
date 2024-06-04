@@ -6,7 +6,6 @@ bot = telebot.TeleBot(TOKEN)
 
 @bot.message_handler(commands=['start'])
 def process_start_command(message: telebot.types.Message):
-    bot.set_state(message.chat.id , state='start')
     text = (f' Привет, {message.from_user.first_name}! \n '
             ' Я манул Тимофей из Московского зоопарка.\n'
             ' Я очень люблю играть в викторины и предлагаю тебе тоже попробовать! \n '
@@ -45,7 +44,7 @@ def display_question(message):
         bot.register_next_step_handler(msg, check_answer)
     else:
         result(message, points)
-
+    
 
 def check_answer(message):
     question = ZooQuiz.questions[0]
@@ -61,7 +60,13 @@ def check_answer(message):
 
 
 def result(message, points):
-    print(points)
+    if points > 10:
+        points = 10
+    animals = ZooQuiz.animals
+    for keys, value in animals.items():
+        if value == points:
+            bot.send_message(message.chat.id, f'Поздравляю твое тотемное животное это - {keys}')
+
 
 
 bot.polling()
